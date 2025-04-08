@@ -257,12 +257,23 @@ To not plot the standard error
 1.  What geom would you use to draw a line chart? A boxplot? A histogram? An area chart?
 2.  Run this code in your head and predict what the output will look like. Then, run the code in R and check your predictions.
 
+The code result is just the same. However, the former has efficiency!
+
 ```{r}
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy)) + 
+  geom_point() + 
+  geom_smooth()
+
+ggplot() + 
+  geom_point(data = mpg, mapping = aes(x = displ, y = hwy)) + 
+  geom_smooth(data = mpg, mapping = aes(x = displ, y = hwy))
 
 ```
 
 
 3.  Will these two graphs look different? Why/why not?
+
+same as number 2
 ```{r}
 ggplot(data = mpg, mapping = aes(x = displ, y = hwy)) + 
   geom_point() + 
@@ -280,12 +291,16 @@ ggplot() +
 ```{r}
 data("diamonds")
 glimpse(diamonds)
+str(diamonds)
 ```
 
 # Bar plot
 ```{r}
 ggplot(data = diamonds) + 
-  geom_bar(mapping = aes(x = cut))
+  geom_bar(mapping = aes(x = cut)) #bar is barplot --> categorical data!
+
+ggplot(data = diamonds) + 
+  stat_count (mapping = aes(x = cut)) #stat_count is the same as geom_bar for categorical/count data!
 ```
 
 # Overriding defaults
@@ -298,7 +313,10 @@ demo <- tribble(
   "Very Good",  12082,
   "Premium",    13791,
   "Ideal",      21551
-)
+) #we are basically making a new dataframe
+#From the summary of the old ones
+# Here, we simply make "cut" frequency
+
 demo
 ```
 
@@ -306,13 +324,21 @@ demo
 ```{r}
 ggplot(data = demo) +
   geom_bar(mapping = aes(x = cut, y = freq), stat = "identity")
+
+# Why cant we make the plot without stat = identity?
+# does the identity makes category Ideal in the middle?
 ```
-Question: Why did we specify now specify a y axis?
+### Question: Why did we specify now specify a y axis?
+Because here is a dataframe. in Demo, cut is tied with freq
+
 
 # What if we want to know the proportion rather than the absolute frequency?
 ```{r}
 ggplot(data = diamonds) + 
-  geom_bar(mapping = aes(x = cut, y = stat(prop), group = 1))
+  geom_bar(mapping = aes(x = cut, y = stage(after_stat = prop), group = 1))
+# here, after)_stat(prop) is to create statistics data of proportion!!!
+# cut = class/categorical
+# so y is a statistical data of cut frequency
 ```
 
 Question: does anyone get the warning that's in the workbook?
@@ -324,24 +350,27 @@ If so, can use # geom_bar(mapping = aes(x = cut, y = stage(after_stat = prop), g
 ggplot(data = diamonds) + 
   stat_summary(
     mapping = aes(x = cut, y = depth),
-    fun.min = min,
-    fun.max = max,
-    fun = median
+    fun.min = min, #to create min value of depth (y) per cut (x)
+        fun.max = max, # to create max value of depth per cut
+    fun = median #to plot the meadian value of depth
   )
 ```
 
 
-# Aesthetic adjustments adjustments
+# Aesthetic adjustments 
 Another way to boost the way you can convey information with plots using ggplot2 is to use aesthetics like colour or fill to change aspects of bar colours. We already did this once, but there are multiple options available to you, including changing the fill our outline colours.
 
 ```{r}
 ggplot(data = diamonds) + 
-  geom_bar(mapping = aes(x = cut, colour = cut))
+  geom_bar(mapping = aes(x = cut, colour = cut)) # colour = outline!
 ggplot(data = diamonds) + 
-  geom_bar(mapping = aes(x = cut, fill = cut))
+  geom_bar(mapping = aes(x = cut, fill = cut)) # fill = entire plot!
 ```
 Question: Does anyone notice anything different in the colour scheme of this plot?
 (Hint: It's in the viridis colour palette (colour blind friendly), but why is it different from the colour palette we used earlier?)
+
+## UNANSWERED YET!
+
 Check out the difference:
 ```{r}
 ggplot(data = mpg, mapping = aes(x = displ, y = hwy)) + 
@@ -358,14 +387,15 @@ Now try using these aesthetics to colour by another variable like clarity. Notic
 ggplot(data = diamonds) + 
   geom_bar(mapping = aes(x = cut, fill = clarity))
 ```
+# using position = "identity"
+place each object exactly where it falls in the context of the graph.
 
 
 # To alter transparency (alpha)
 ```{r}
 ggplot(data = diamonds, mapping = aes(x = cut, fill = clarity)) + 
-  geom_bar(alpha = 1/5, position = "identity")
+  geom_bar(alpha = 1/5, position = "identity") #bad graph, ended up increase complexity
 ```
-
 
 # To color the bar outlines with no fill color
 ```{r}
@@ -376,34 +406,348 @@ ggplot(data = diamonds, mapping = aes(x = cut, colour = clarity)) +
 
 # Position adjustments
 position = "fill" works like stacking, but makes each set of stacked bars the same height.
+
+Because position --> Fill (like in a picture, fill it until covers the y scale, 1.00 or 100%)
+
+Therefore, position = "fill" automatically makes the data proportion!!
+Only can be used for *double categorical* data!
 ```{r}
 ggplot(data = diamonds) + 
   geom_bar(mapping = aes(x = cut, fill = clarity), position = "fill")
+# y-axis ended up being proportion!
 ```
 
 
 # position = "dodge" 
 Places overlapping objects directly beside one another.
+beside = horizontally!
 ```{r}
 ggplot(data = diamonds) + 
   geom_bar(mapping = aes(x = cut, fill = clarity), position = "dodge")
 ```
 
 # Jittering
-position = "jitter" adds a small amount of random noise to each point to avoid overplotting when points overlap. This is useful for scatterplots but not barplots.
+position = "jitter" adds a small amount of random noise to each point **to avoid overplotting when points overlap**. This is useful for scatterplots but not barplots.
 ```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy), position = "jitter")
+  #geom_point(mapping = aes(x = displ, y = hwy))
+
+# this is the rough one. We should use this.
+# Points would be inaccurate because they were moved slightly from their original values
+# but used to prevent overlap between points.
+
 ggplot(data = mpg) + 
   #geom_point(mapping = aes(x = displ, y = hwy), position = "jitter")
   geom_point(mapping = aes(x = displ, y = hwy))
+
+# this is corrected and makes aesthetically beautiful
+```
+# Grammar for Graphics
+
+ggplot(data = <DATA>) +  # THIS IS GLOBAL
+  <GEOM_FUNCTION>(
+     mapping = aes(<MAPPINGS>), # THIS IS LOCAL
+     stat = <STAT>, 
+     position = <POSITION>
+  ) +
+  <FACET_FUNCTION>
+
+Remember to pick waht would be inherited aesthetics (aes) from global to local 
+
+
+# WORKSHOP 2 
+
+## 2.1. Labels
+
+### 2.1.1. Title
+```{r}
+ggplot(mpg, aes(displ, hwy)) +  #data mpg, x displ, y hwy
+    geom_point(aes(color = class)) + #colors based on class
+     geom_smooth(se = FALSE) + #make line plot without interval Standard error
+      labs(title = "Fuel effeciency generally decreases with engine size")
+```
+### 2.1.2. Subtitle
+Add more details with **smaller font** beneath title
+*caption*: adds text at **bottom right** of plot
+```{r}
+ggplot(mpg, aes(displ, hwy)) +  #data mpg, x displ, y hwy
+    geom_point(aes(color = class)) + #colors based on class
+     geom_smooth(se = FALSE) + #make line plot without interval Standard error
+      labs(
+        title = "Fuel effeciency generally decreases with engine size",
+        subtitle = "Two seaters (sports cars) are an exception because of their light weight",
+        caption = "Data from fueleconomy.gov"
+)
+```
+### 2.1.3. Axis and Legend labels
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) +  #data mpg, x displ, y hwy
+    geom_point(aes(color = class)) + #colors based on class
+     geom_smooth(se = FALSE) + #make line plot without interval Standard error
+      labs(
+        x = "Engine Displacement (L)",
+        y = "Highway fuel economy (mpg)",
+        colour = "Car Type" #Legend
+)
 ```
 
 
+## 2.2. Annotations
+**adding the text into the plot!! Horayy!**
+
+use geom_text()!
+If texts overlap --> use nudge() but from different package!
+```{r}
+best_in_class <- mpg %>% # from data mpg
+  group_by(class) %>% # Search from each class
+  filter(row_number(desc(hwy)) == 1) # desc = descending order
+# this function basically searches the max number of hwy (kilometer distance per 1 gallon fuel)
+# in each class
+# use descending order because it sorts from the biggest (Max) to min
+# descending order with number 1 = biggest (max)
+
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(colour = class)) +
+  geom_text(aes(label = model), data = best_in_class) #labels overlap
+# here, the name shows the model (car type) 
+```
 
 
+## 2.3. Scales
+Scales is what the axis number shows
+
+### 2.3.1. normal default scale
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(colour = class))
+```
+### 2.3.2. Edited scales
+to edit, you must use vector **c(min_value, max_value)** 
+
+can also use scale_x_continuous()
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(colour = class)) +
+  scale_x_continuous() +
+  scale_y_continuous(limits = c(20,30)) +
+  scale_colour_discrete() # this is to change colour in the scale?
+
+```
+
+## 2.4. Axis Ticks
+
+### 2.4.1. Breaks
+Breaks is basically showing the sequential ticks in the x/y axis scale
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point() +
+  scale_y_continuous(breaks = seq(15, 40, by = 5))
+# here, we start to make interval of y-axis by 5 from 15 to 40
+# Other than this, the ticks wont be shown! (look at 0 to 10 not being shown!)
+```
 
 
+## 2.5. Legends and colour schemes
+
+a. Change position of legend. The **default** legend position is right!
+b. Make plot as wide as possible
+c. Hide them
+```{r}
+base <- ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(colour = class)) #make the plot into a variable
+
+base + theme(legend.position = "left")  #Setup the legend position
+```
+```{r}
+base + theme(legend.position = "top")  #Setup the legend position
+base + theme(legend.position = "top", legend.byrow = TRUE)  #Sort the legend by alphabetical
+```
+```{r No legend}
+base + theme(legend.position = "none")  #Setup the legend position
+```
+
+## 2.6. Replacing a scale
+
+## 2.6.1. Scale function replacement
+We can edit the scale from just real number into functions such as log or exp
+```{r}
+ggplot(diamonds, aes(carat, price)) +
+  geom_smooth() # Very ugly. 
+```
+Now, we try to changeit into log scale
+```{r}
+ggplot(diamonds, aes(carat, price)) +
+  geom_bin2d() + 
+  scale_x_log10() + 
+  scale_y_log10()
+```
+### 2.6.2. Colour scale change - Palette
+Palette: http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = drv)) # class is drv
+
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = drv)) +
+  scale_colour_brewer(palette = "Set1") # set1 is one of the color palette format in R
+
+## REDUNDANT SHAPE MAPPING
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = drv, shape = drv)) + # here, not only the colour scale change, but we also change the shape
+  scale_colour_brewer(palette = "Set1")
+
+```
+### 2.6.3. Colour scale change - Manual
+use scale_colour_manual
+```{r}
+presidential %>% #Default data with column name, start, end, party
+  mutate(id = 33 + row_number()) %>% #creates a new column, id, with 33 + row number
+  # Thats why id of Eisenhower is 34, because 33 + row (1)
+  ggplot(aes(start, id, colour = party)) +
+    geom_point() +
+    geom_segment(aes(xend = end, yend = id)) +
+    scale_colour_manual(values = c(Republican = "red", Democratic = "blue"))
+```
+1. Here, id means President number .....
+2. geom_segment is creating the line for each point
+with xend = end, is the endpoint of the line based on the end date column
+whilst yend = id is per each presidents id (only singular number, no range!)
+
+3. **plot aim**: Showing the relative scale of each president how long their era were
+
+4. Another colour scale is using viridis!
+### 2.6.4. Package viridis and hexbin
+use scale_colour_viridis()
+```{r}
+#install.packages('viridis')
+#install.packages('hexbin')
+library(viridis)
+p <- ggplot(mtcars, aes(wt, mpg))
+p + geom_point(size = 4, aes(colour = factor(cyl))) +
+    scale_color_viridis(discrete = TRUE) +
+    theme_bw()
+```
+```{r}
+df <- tibble( # note we're just making a fake dataset so we can plot it
+  x = rnorm(10000),
+  y = rnorm(10000)
+)
+ggplot(df, aes(x, y)) +
+  geom_hex() + # a new geom!
+  coord_fixed()
+
+ggplot(df, aes(x, y)) +
+  geom_hex() +
+  viridis::scale_fill_viridis() +
+  coord_fixed()
 
 
+```
 
 
+## 2.7. Themes
+To change **non-data** elements!!! (Layout, background, etc.)
+### 2.7.1. Theme Black and White
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = class)) +
+  geom_smooth(se = FALSE) +
+  theme_bw()
+```
+
+### 2.7.2. Theme Light
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = class)) +
+  geom_smooth(se = FALSE) +
+  theme_light() #No bold borderline!
+```
+
+### 2.7.3. Theme classic
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = class)) +
+  geom_smooth(se = FALSE) +
+  theme_classic() #without grids!
+```
+
+### 2.7.4. Theme dark
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = class)) +
+  geom_smooth(se = FALSE) +
+  theme_dark() #Grey background
+
+```
+### 2.7.5. Theme FORMAT
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = class)) +
+    theme (panel.border = element_blank(), #No borderline shading 
+        panel.grid.minor.x = element_blank(), #No minor grid in x axis
+        panel.grid.minor.y = element_blank(), # No minor grid in y axis
+        legend.position="bottom", # Place legend in bottom
+        legend.title=element_blank(), # No legend title
+        legend.text=element_text(size=8), # Set up the font size of legend
+        panel.grid.major = element_blank(), # No major grid in the graph!
+        legend.key = element_blank(), 
+        legend.background = element_blank(), # No legend background colour
+        axis.text.y=element_text(colour="black"), # set up font colour x
+        axis.text.x=element_text(colour="black"), # set up font colour y
+        text=element_text(family="Arial"))  # set up font type
+
+```
+
+
+## 2.8. Saving and exporting your plots
+
+export using ggsave()
+HOWEVER, make sure your working directory is set right!
+```{r}
+#getwd()
+ggplot(mpg, aes(displ, hwy)) + geom_point()
+
+ggsave("my-plot1.jpg")
+#> Saving 7 x 4.32 in image
+```
+# Assignment Number 1
+
+from journal: https://www.frontiersin.org/journals/marine-science/articles/10.3389/fmars.2020.00001/full
+**Figure 3**
+
+```{r Homework Number 1}
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(viridis)
+df <- read.csv("Homework1_Data.csv", header = TRUE, sep = ";")
+
+ggplot(data= df, mapping = aes(x = Species, y = Contribution)) +
+  geom_boxplot(aes(fill = Source))+
+  labs(
+    title = "Proportion of organic sources on seagrass soil organic carbon",
+    subtitle = "results of isotope mixing model",
+    x = "seagrass meadow species",
+    y = "Contribution of sources to soil organic carbon (%)",
+    fill = "Source of organic carbon"
+  )+
+  scale_fill_viridis(discrete = TRUE) +
+    theme_classic()+
+  theme(legend.position = "top",
+        legend.justification = "top",
+        legend.direction = "horizontal",
+        legend.byrow = FALSE)+
+  scale_y_continuous(breaks = seq(0, 100, by = 10), limits = c(0,100))+
+  scale_x_discrete(guide = guide_axis(n.dodge = 2))
+
+ggsave("Homework 1 Assignment.jpg",
+       width = 7,
+       height = 5,
+       units = "in"
+       )
+
+```
+# Workshop 3
 
