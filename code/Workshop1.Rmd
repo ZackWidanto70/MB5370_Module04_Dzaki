@@ -750,4 +750,16 @@ ggsave("Homework 1 Assignment.jpg",
 
 ```
 # Workshop 3
+The **tidy format**:
+Variables in Vertical (column)
+Observations in horizontal (row)
+Values in each cell
+
+```{r}
+#library(tidyverse)
+table1
+table2
+table3
+
+```
 
