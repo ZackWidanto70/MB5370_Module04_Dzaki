@@ -1120,7 +1120,168 @@ stocks |>
 
 
 ```
+## 3.5. Relational Data
+Simply put, joining dataframes together!
 
+Main package: dplyr.
+
+3 families of relational data:
+a. Mutating joins = add new variables to one dataframe from matching observations
+b. filtering joins = filter observations from one data frame based on whether
+or not they match an observation in the other table
+c. Set operation = treat observations as if they are set elements
+
+### 3.5.1. Joining Datasets
+Join datasets by identifying the **keys**.
+
+**Keys**: A variable/set of variables that uniquely identifies an observation.
+in SC5502, keys are the data ID (unique per observation, only 1!)
+
+if the keys are the unique, main identity of a dataframe --> **primary**
+if the keys are unique, but NOT main identity of dataframe --> **foreign**
+```{r}
+library(nycflights13)
+
+airlines # First data
+airports # second data
+planes # third data. Primary key is tailnum
+flights # Fourth data, THE MAIN DATA (COMPLETE).
+# in Flights, tailnum is unique identity but only Foreign key
+```
+### 3.5.2. Identifying primary keys in datasets
+filter n>1 result is not visible (because the variables only have 1 observation each!)
+
+if data does not have primary key --> create one by mutate!!!
+
+Primary key and corresponding foreign key forms relation!
+```{r}
+planes %>% 
+  count(tailnum) %>% 
+  filter(n > 1)  #tailnum is the primary key
+
+weather %>% 
+  count(year, month, day, hour, origin) %>% 
+  filter(n > 1) 
+weather |>
+  count(origin) |>
+  filter(n>1)
+
+# Data that does not have primary key
+flights %>% 
+  count(year, month, day, flight) %>% 
+  filter(n > 1) # Still has results, mainly n =2 or n = 3. NO clear unique identity
+
+flights %>% 
+  count(year, month, day, tailnum) %>% 
+  filter(n > 1)
+```
+### 3.5.3. Mutating Joins
+Combine variables from two tables.
+adds to the **right side** of the data!!! Matches by row (observation) and corresponding keys!
+
+```{r}
+flights2 <- flights %>% 
+  select(year:day, hour, origin, dest, tailnum, carrier)
+
+airlines # has 2 variables: carrier, name
+
+# flights2 >< airlines via key CARRIER
+
+flights2 %>%
+  select(-origin, -dest) %>%  # drop down origin and dest
+  left_join(airlines, by = "carrier") # the flights2 data is joined to the left side of airlines
+
+# A way more complicated version
+flights2 %>%
+  select(-origin, -dest) %>% 
+  mutate(name = airlines$name[match(carrier, airlines$carrier)])
+```
+### 3.5.4. Inner join
+```{r Visual of Inner join}
+x <- tribble(
+  ~key, ~val_x,
+     1, "x1",
+     2, "x2",
+     3, "x3"
+)
+y <- tribble(
+  ~key, ~val_y,
+     1, "y1",
+     2, "y2",
+     4, "y3"
+)
+x %>% 
+  inner_join(y, by = "key") # deleted 3 and 4 in key
+
+
+```
+
+### 3.5.5. Outer join
+left_join() --> keep observation in x
+right_join() --> keep all observations in y
+full_join() --> keep all observations in x and y
+
+All inexistent data will be considered as NA
+
+### 3.5.6. Join with duplicate keys (non-unique)
+```{r duplicate keys}
+x <- tribble(
+  ~key, ~val_x,
+     1, "x1",
+     2, "x2",
+     2, "x3",
+     1, "x4"
+)
+y <- tribble(
+  ~key, ~val_y,
+     1, "y1",
+     2, "y2"
+)
+left_join(x, y, by = "key") # create duplicates of 2 and 1, fits all
+```
+```{r}
+x <- tribble(
+  ~key, ~val_x,
+     1, "x1",
+     2, "x2",
+     2, "x3",
+     3, "x4"
+)
+y <- tribble(
+  ~key, ~val_y,
+     1, "y1",
+     2, "y2",
+     2, "y3",
+     3, "y4"
+)
+left_join(x, y, by = "key") # make duplicates in x (x2 and x3)
+
+      # Default, by = NULL - Joins all!
+flights2 %>%  # year:hour, origin, dest, tailnum, carrier
+  left_join(weather) # weather: origin, year:hour, temp, ...
+# output: year:hour, origin, dest, tailnum, carrier, temp, ...
+# here the keys are year:hour, origin.
+
+      # Join by character vector
+flights2 %>% # year:hour, origin, dest, tailnum, carrier
+  left_join(planes, by = "tailnum") # tailnum, year, type, ...
+# results: year.x, month:hour, origin, dest, TAILNUM, carrier, year.y
+
+# Here, year in flights2 and tailnum means different!
+# It separate the variables (columns)
+
+      # join by NAMED character vector by = c("a" = "b")
+# Match variable a in table x to variable b in table y
+
+flights2 %>% # year:hour, origin, dest, tailnum, carrier
+  left_join(airports, c("dest" = "faa")) # faa, name, lat, lon, ....
+# output: year:hour, origin, dest, tailnum, carrier, name, lat, lon
+# here, the faa in airports is considered the merging key of dest!
+
+flights2 %>% 
+  left_join(airports, c("origin" = "faa"))
+
+```
 
 
 # Assignment 2
