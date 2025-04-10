@@ -1,0 +1,214 @@
+---
+title: "Assignment Workshop 3"
+author: "Dzaki Widanto"
+date: "2025-04-10"
+output: html_document
+---
+
+# 1. Assignment Workshop 3 - Fish Charter
+```{r library working, message = F}
+library(ggplot2)
+library(janitor)
+library(tidyverse)
+library(dplyr)
+```
+
+## Input data and wrangle it
+```{r Data wrangling}
+df1 <- read_csv("../data/export.csv") #If we worked in a project, we can do it like this
+# Messy header
+
+# Editing the header of main data
+df2 <- df1 %>% 
+  row_to_names(row_number = 1) %>%
+  clean_names()
+
+```
+## Extracting the main data into several variables
+```{r dataframe separation}
+diving <- df2 |>
+  select(na | contains("diving")) |> # We are now selecting header with the name na and contains word "diving"
+  row_to_names(row_number = 1) 
+tibble(diving) #Still characters!
+
+diving <- diving |> # Make the values in row number 1, into the header of columns!
+  mutate(across(is.character, as.numeric)) |> # make all columns from character into doubles!
+  # Mutate also forces the text N/A into NA
+  filter(!is.na(CalendarYear)) |> # Filter out the NA from CalendarYear
+  mutate(Type = "Diving") |>
+  select(c(-Tonnes, -DiscardNumber))
+tibble(diving)
+
+line <- df2 |>
+  select(na | contains("line")) |> # We are now selecting header with the name na and contains word "diving"
+  row_to_names(row_number = 1) |>
+  mutate(across(is.character, as.numeric)) |> # make all columns from character into doubles!
+  # Mutate also forces the text N/A into NA
+  filter(!is.na(CalendarYear)) |>
+  mutate(Type = "Line")|>
+  select(c(-Tonnes, -DiscardNumber))
+tibble(line)
+
+comb <- df2 |>
+  select(na | contains("combination")) |> # We are now selecting header with the name na and contains word "diving"
+  row_to_names(row_number = 1) |>
+  mutate(across(is.character, as.numeric)) |> # make all columns from character into doubles!
+  # Mutate also forces the text N/A into NA
+  filter(!is.na(CalendarYear)) |>
+  mutate(Type = "Combination")|>
+  select(c(-Tonnes, -DiscardNumber))
+tibble(line)
+```
+
+## Step 0: Omit the NAs
+```{r}
+comb <- na.omit(comb)
+diving <- na.omit(diving)
+```
+
+## Data join
+```{r}
+data <- comb |>
+  full_join(diving)
+
+# full_data <- bind_rows(comb, diving) # the same!
+```
+## Plot number 1 - Fish Charter
+```{r Data plotting}
+# search highest years of effort
+
+highest_days <- data |>
+  group_by(Type) |>
+  filter(row_number(desc(Days)) == 1)  # search for the highest days
+
+library(viridis)
+ggplot(data, aes(CalendarYear, Days))+
+  geom_point(aes(color = Type, shape = Type)) +
+  geom_smooth(aes(color = Type), se = F) +
+  scale_x_continuous(breaks = seq(1995, 2025, by = 3))+
+  scale_y_continuous(breaks = seq(0, 200, by = 20)) +
+  geom_text(aes(label = Days),
+            data = highest_days,
+            nudge_x = 1
+            ) +
+  labs(
+    title = "Annual Catch effort trend in Queensland Fisheries 1999-2025",
+    caption = "Data from QFISH",
+    x = "Year",
+    y = "Effort (days)",
+  ) +
+  scale_color_viridis(discrete = TRUE)+
+  theme_classic()
+
+# Save the plot
+ggsave("../output/Plot Assignment 3 - Charter data.jpg",
+       width = 7,
+       height = 5,
+       units = "in"
+       )
+```
+
+# 2. Assignment Workshop 3 - Sharks
+
+## Data wrangling
+```{r}
+shark_program <- 
+  read_csv("../data/export_shark.csv") |> # Original
+  row_to_names(row_number = 2, remove_rows_above = FALSE) |> # Make row number 2 as column names
+  clean_names() # But we want 
+head(shark_program)
+```
+## Separate into variables
+```{r}
+shark_catch <- 
+  shark_program |>
+  select(area | contains("shark")) |> # select column names of area and contains shark
+  row_to_names(row_number = 1) |> # Make row number 1 the new column names
+  rename(Area = 1) |> # Name the column number 1 "Area".
+  mutate(across(-c(Area), as.numeric)) # Make all columns, except area, as numeric
+tibble(shark_catch)
+
+turtle_catch <- 
+  shark_program |>
+  select(area | contains("turtle")) |>
+  row_to_names(row_number = 1) |>
+  rename(Area = 1) |>
+  mutate(across(-c(Area), as.numeric)) 
+
+total_catch <-  # This is total catch (shark, turtle, mammal, other) per area per year!
+  shark_program |>
+  select(area | contains("na_")) |>
+  row_to_names(row_number = 1) |>
+  rename(Area = 1) |>
+  mutate(across(-c(Area), as.numeric))
+tibble(total_catch)  
+```
+## Pivot table
+to make the years into their own columns
+```{r}
+shark_catch_long <- 
+shark_catch |>
+  pivot_longer(!Area, names_to = "Year", values_to = "Nos")
+
+total_catch_long <-
+  total_catch |>
+  pivot_longer(!Area, names_to = "Year total", values_to = "Nos") |>
+  separate("Year total", into = c("Year", "useless"), convert = TRUE) |>
+  select(-useless) |> # Remove the useless column
+  mutate(Year = as.numeric(Year)) |>
+  filter(!(Year %in% NA)) # delete the NA in years
+total_catch_long           
+
+```
+
+## Calculate statistics
+to get the mean per year!
+```{r}
+shark_stats <- 
+shark_catch_long |>
+  filter(Area != "Grand Total") |> # Exclude the grand total in the column area
+  group_by(Year) |> # "For every year
+  summarise(Mean = mean(Nos, na.rm = TRUE), # na.rm = dont calculate NA values
+            SD = sd(Nos, na.rm = TRUE)) |>
+  mutate(Year = as.numeric(Year)) |>
+  mutate(Taxa = "Sharks")
+
+total_stats <-
+  total_catch_long |>
+  filter(Area != "Grand Total") |> # Exclude the grand total in the column area
+  group_by(Year) |> # "For every year
+  summarise(Mean = mean(Nos, na.rm = TRUE), # na.rm = dont calculate NA values
+            SD = sd(Nos, na.rm = TRUE)) |>
+  mutate(Year = as.numeric(Year)) |>
+  mutate(Taxa = "Total")
+
+# Combine the statistical data!
+combine_stats <- bind_rows(shark_stats, total_stats)
+```
+
+## Plot the Data
+```{r}
+ggplot(data = combine_stats, aes(x =Year, y = Mean, fill = Taxa, shape = Taxa), colour = "black") +
+  geom_line() +
+  geom_pointrange(aes(ymin = Mean - SD, ymax = Mean + SD)) +
+    scale_shape_manual(values = c(23, 24)) +
+  scale_x_continuous(breaks = seq(2000, 2025, by = 3))+
+  scale_y_continuous(breaks = seq(0, 300, by = 50)) +
+  labs(
+    title = "Annual trend of macrofauna catch in Queensland 2000-2025",
+    subtitle = "comparison between total and shark catch",
+    caption = "Data from QFISH",
+    x = "Year",
+    y = "Mean Catch (n)",
+  ) +
+  scale_color_viridis(discrete = TRUE)+
+  theme_classic()
+
+# Save the plot
+ggsave("../output/Plot Assignment 3 - Shark Data.jpg",
+       width = 7,
+       height = 5,
+       units = "in"
+       )
+
+```
