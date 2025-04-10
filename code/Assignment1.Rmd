@@ -1,0 +1,52 @@
+---
+title: "Assignment 1"
+author: "Dzaki Widanto"
+date: "2025-04-10"
+output: html_document
+---
+
+# Assignment Number 1
+
+from journal: https://www.frontiersin.org/journals/marine-science/articles/10.3389/fmars.2020.00001/full
+**Figure 3**
+
+```{r packages loading, warning = F}
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(viridis)
+```
+
+## data loading
+```{r}
+df <- read.csv("../data/Homework1_Data.csv", header = TRUE, sep = ";")
+tibble(df)
+```
+
+```{r}
+ggplot(data= df, mapping = aes(x = Species, y = Contribution)) +
+  geom_boxplot(aes(fill = Source), outliers = F)+
+  labs(
+    title = "Proportion of organic sources on seagrass soil organic carbon",
+    subtitle = "results of isotope mixing model",
+    x = "seagrass meadow species",
+    y = "Contribution of sources to soil organic carbon (%)",
+    fill = "Source of organic carbon"
+  )+
+  scale_fill_viridis(discrete = TRUE) +
+    theme_classic()+
+  theme(legend.position = "top",
+        legend.justification = "top",
+        legend.direction = "horizontal",
+        legend.byrow = FALSE)+
+  scale_y_continuous(breaks = seq(0, 100, by = 10), limits = c(0,100))+
+  scale_x_discrete(guide = guide_axis(n.dodge = 2))
+```
+
+```{r}
+ggsave("../output/Homework 1 Assignment.jpg",
+       width = 7,
+       height = 5,
+       units = "in"
+       )
+```

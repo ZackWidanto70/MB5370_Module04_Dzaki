@@ -7,9 +7,6 @@ output: html_document
 
 # WORKSHOP 3
 ```{r setup, include=FALSE, message = FALSE, warning = FALSE}
-#install.packages("sf")
-#install.packages("tmap")
-#install.packages("mgcv")
 library(ggplot2)
 library(janitor)
 library(tidyverse)
@@ -53,17 +50,6 @@ ggplot(table1, aes(year, cases)) +
   geom_line(aes(group = country), colour = "grey50") 
   
 ```
-### 3.1.2. Exercises (UNFINISHED)
-```{r}
-# Number TB cases per country per year
-table2 %>%
-  count(year, type, wt = count)
-# Matching population per country per year
-table2 %>%
-  count(country, year, wt = count)
-
-
-```
 ## 3.2. Pivoting dataset
 
 Most of the data that we would process will be untidy.
@@ -79,7 +65,7 @@ Solution: **pivot** to lengthen or widen the data!!!
 ```
 Here, each observation (row) is dedicated for song (track)
 The columns (wk1-wk76) describe variables of the song!
-However, the column contains two meaning!
+However, these columns contains two meaning!
 a. variable (week)
 b. values (rank, number)
 
@@ -93,9 +79,9 @@ billboard |>
     values_to = "rank", # specifying the name of column to create from the data stored in cell values
     values_drop_na = TRUE # this line is to delete rows with NA!
   )
-# keeping the values (rank number) identic to each cols (week) of observation (track)
+# keeping the values (rank number) identical to each cols (week) of observation (track)
 
-# Same code as this
+# These code lines are also act the same.
   
 #billboard |>
 #  pivot_longer(
@@ -120,8 +106,6 @@ df <- tribble(
    "B",  140,  115,
    "C",  120,  125
 )
-df
-
 # pivoting
 # to make bp1 and bp2 as new column, whilst creating one observation = one row!
 df |> 
@@ -144,19 +128,12 @@ cms_patient_experience |>
 # Data pivot - Widening
 cms_patient_experience |> 
   pivot_wider(
+    id_cols = starts_with("org"), # The columns that are staying
     names_from = measure_cd, # widen the measure_cd 
     values_from = prf_rate # make separate columns for different values (prf_rate) of observations (measure_cd)
   )
-# Still not complete. The org_... variables are still multiple in observation (rows)
-
-cms_patient_experience |> 
-  pivot_wider(
-    id_cols = starts_with("org"),
-    names_from = measure_cd,
-    values_from = prf_rate
-  )
 # Now each org_.. has individual values,
-#and the variable measure_cd is widthened into CAHPS_GRP_x variables
+# and the variable measure_cd is widened into CAHPS_GRP_x variables
 # with the values from prf_rate
 ```
 ### 3.2.6 Widening Longer
@@ -170,20 +147,12 @@ df <- tribble(
   "A",        "bp2",    120,
   "A",        "bp3",    105
 )
-df
+
 df |> 
   pivot_wider(
     names_from = measurement,
     values_from = value
   )
-
-df |> 
-  distinct(measurement) |> 
-  pull()
-
-df |> 
-  select(-measurement, -value) |> 
-  distinct()
 
 # What pivot_wider() does in a nutshell
 df |> 
@@ -196,40 +165,45 @@ a. Column names --> Unique values in measurement (example)
 b. Rows --> from column that will not be changed, aka id (example)
 
 ### 3.2.7. Pivot - Exercise 1
-
+1.	Why are pivot_longer() and pivot_wider() not perfectly symmetrical? 
+Carefully consider the following example
 ```{r}
+# Initial data
 stocks <- tibble(
   year   = c(2015, 2015, 2016, 2016),
   half  = c(1,2,1,2),
   return = c(1.88, 0.59, 0.92, 0.17)
 )
-
+# Step 1: pivot wider
 stocks %>% 
   pivot_wider(
     names_from = year,
     values_from = return) %>% # This one works, it widens the tibble
+  # Step 2: pivot longer
   pivot_longer(cols = `2015`:`2016`, names_to = "year", values_to = "return")
-
-# Then, we fix the data type with
-stocks %>% 
-  pivot_wider(
-    names_from = year,
-    values_from = return) %>% # This one works, it widens the tibble
-  pivot_longer(`2015`:`2016`,
-    names_to = "year", 
-    names_transform = list(year = as.numeric),
-    values_to = "return")
 ```
 Here, we see that in the first stocks tibble,
 year (dbl), half(dbl), return(dbl)
 
-Then, when we pivot_wider and pivot_longer, the final result is
-half(dbl), year(chr), return(dbl)
+Then, when we pivot_wider and pivot_longer, the final result is half(dbl), year(chr), return(dbl).
 
 See that the year becomes character. This is because when we pivot_wider, 2015 and 2016
 in the column name becomes character!
+
 Then when we pivot_longer to return it back as a variable (column), it stores it as character.
-Same as the billboard tibble week! (it turns into character column).
+
+Now, let's try to fix this!
+```{r}
+# Then, we fix the data type with:
+stocks %>% 
+  pivot_wider(
+    names_from = year,
+    values_from = return) %>% 
+  pivot_longer(`2015`:`2016`,
+    names_to = "year", 
+    names_transform = list(year = as.numeric), # transform the year column from character into numeric
+    values_to = "return")
+```
 
 ### 3.2.8. Exercise 2
 Why this code fails?
@@ -239,6 +213,12 @@ table4a %>%
     c(1999, 2000),
     names_to = "year", 
     values_to = "cases")
+```
+Here, the declaration is not correct.
+remember, as a column name, 1999 and 2000 are characters!
+therefore, we need to declare them as characters not numbers.
+
+```{r Exercise 2 solution}
 # Change into
 table4a %>% 
   pivot_longer(
@@ -248,19 +228,21 @@ table4a %>%
     values_to = "cases")
 # Now, the data is tidy!
 ```
-Here, the declaration is not correct.
-remember, as a column name, 1999 and 2000 are characters!
-therefore, we need to declare them as characters not numbers.
 
 ### 3.2.9. Exercise 3
-3.	Consider the sample tibble below. Do you need to make it wider or longer? What are the variables?
+3.	Consider the sample tibble below. Do you need to make it wider or longer? 
+What are the variables?
 ```{r}
 preg <- tribble(
   ~pregnant, ~male, ~female,
   "yes",     NA,    10,
   "no",      20,    12
 )
-preg
+```
+
+Solution: Pivot lengthening the data!
+```{r Exercise 3 solution}
+
 # Need to lengthen pivot!
 preg %>%
   pivot_longer(
@@ -268,12 +250,11 @@ preg %>%
     names_to = "gender",
     values_to = "count"
   )
-
 ```
 ## 3.3. Separating and uniting data tables in tibble
 
 ### 3.3.1. Separate()
-Example using table3
+
 separate() in default, separates a value when it detects non-number or letter character!
 ```{r}
 # Separate can also detect numbers. We just need to declare if the separated values
@@ -446,8 +427,6 @@ y <- tribble(
 )
 x %>% 
   inner_join(y, by = "key") # deleted 3 and 4 in key
-
-
 ```
 
 ### 3.5.5. Outer join
@@ -514,6 +493,7 @@ flights2 %>% # year:hour, origin, dest, tailnum, carrier
 # here, the faa in airports is considered the merging key of dest!
 
 flights2 %>% 
-  left_join(airports, c("origin" = "faa"))
+  left_join(airports, c("origin" = "faa")) # joining flights2 with airports by 
+# matching the origin with faa. 
 
 ```
