@@ -4,8 +4,8 @@ author: "Dzaki Widanto"
 date: "2025-04-10"
 output: html_document
 ---
-
-```{r setup, include=FALSE, message = FALSE}
+# 4.1. Packages and Data
+```{r setup, include=FALSE, message = FALSE, warning = F}
 #install.packages("sf")
 #install.packages("tmap")
 #install.packages("mgcv")
@@ -20,34 +20,141 @@ library(mgcv)
 library(readr)
 ```
 
+## 4.1.1. Data
 ```{r}
 #load the copepod data into R studio
 dat <- read_csv("../data/data-for-course/copepods_raw.csv")
 dat
-```
 
+# Check primary keys
+dat %>%
+  count(silk_id, segment_no) %>% 
+  filter(n > 1)  # silk_id + segment_no are the primary key
+```
+# 4.2. Data Exploration
+Entering the longitude and latitude in ggplot.
+
+however, this **IS NOT MAP**, despite looking like it.
 ```{r load coordinates}
 ggplot(dat) + 
   aes(x = longitude, y = latitude, color = richness_raw) +
   geom_point()
 
+# Plot species richness against latitutde
 ggplot(dat, aes(x = latitude, y = richness_raw)) + 
   stat_smooth() + 
   geom_point()
 
 ```
+# 4.3. Exploring the Map tools
+
+in **sf** package:
 st_as_sf = converts different data types to simple features
 crs = coordinate reference system
+
+Turns out, crs4326 is WGS 84 System!
 ```{r get going with maps}
-sdat <- st_as_sf(dat, coords = c("longitude", "latitude"),
-                 crs = 4326)
+sdat <- st_as_sf(dat, coords = c("longitude", "latitude"), # this function makes new column, geometry
+                 crs = 4326) #st_as_sf converts into simple feature
+tibble(sdat)
 
 # Checkout the crs meaning
 crs4326 <- st_crs(4326)
 crs4326 # look at the whole CRS
 crs4326$Name # pull out just the name of the crs
-crs4326$wkt 
-
+# crs4326$wkt 
 
 ```
+# 4.4. Feature Collection
+simple feature ~ shapefile! 
+so in one column it can hold multiple data, such as latitute and longitude, as a single POINT
+so simple feature can also store things such as polygon!!!
+```{r}
+sdat
+plot(sdat["richness_raw"]) # eventhough its only richness, it already has POINT data
+# Therefore it pulls up like in the map
+
+plot(sdat) # This function plots all variables (column) based on geometry (point)
+```
+# 4.5. Plotting maps
+Here, we gonna use **tmap** package!
+```{r}
+#using tmap
+
+tm1 <- tm_shape(sdat) + # if only run this, shows nothing
+  tm_dots(col = "richness_raw", palette = "viridis")    # plot column richness_raw
+
+tmap_save(tm1, filename = "../output/Richness-map.png", 
+          width = 7, height = 5, units = "in")
+
+# saving the plot
+```
+
+# 4.6. Mapping spatial polygons as layers
+## 4.6.1. Loading data (shapefile)
+Note: Shapefile is inefficient bcs (if you remember) it has multiple files! easily lost!
+
+Alternative is **geopackage** (.gpkg)
+```{r}
+# Example using shapefile
+aus <- st_read("../data/data-for-course/spatial-data/Aussie/Aussie.shp")
+
+# Data contains polygon of Aussie states
+
+shelf <- st_read("../data/data-for-course/spatial-data/aus_shelf/aus_shelf.shp")
+aus
+```
+## 4.6.2. Mapping my polygons
+tm_shape(shp, bbox)
+bbox: Bounding box of the map
+
+1. tm_shape = plot multipoints (MULTIPOLYGON)
+2. tm_dots = plot singular point data (POINTS)
+3. tmap_style = similar to ggplot themes()
+```{r ggplot but tmap!}
+# Plotting the polygons
+tm2 <- tm_shape(shelf) + 
+  tm_polygons()
+tm2
+
+# we can modify this further as in ggplot!!!
+# in mapping, we can make layers of polygons and data!
+
+tm_shape(shelf, bbox = sdat) +  # shelf is base polygons, bbox is the boundary of the map
+  tm_polygons() + # Plot the polygons
+  tm_shape(aus) + # We layer the aus shp (borders)
+  tm_polygons() + # and we plot the aus shp borders
+  tm_shape(sdat) + # we plot our data!
+  tm_dots()    +   # to plot the dots!
+  tmap_style("cobalt") # To style your map, kinda like color scale
+```
+# 4.7. Further exploration of t_map
+```{r}
+library(tmap)
+
+# load data
+data("World")
+
+tm_shape(World) +
+  tm_polygons() +
+  tm_crs(crs = 4326) +
+  tm_polygons("pop_est", palette = "viridis", title = "Population") +
+  tm_borders(col = "white", lwd = 0.5) +
+  tm_layout(legend.outside = TRUE) +
+  tm_text("name", size = 0.4) +
+  tmap_style("classic")
+```
+## 4.7.1.  Make Interactive map
+```{r}
+tmap_mode("view")  # Make into viewer mode!
+
+my_tmap <- tm_shape(World) +
+  tm_polygons("pop_est", palette = "viridis", title = "Population")
+my_tmap
+tmap_save(my_tmap, filename = "HtmlWidget/416-introduction-to-tmap-interactive.html")
+# Error mungkin ga bisa
+
+tmap_mode("plot")  # to return into plot map
+```
+
 
