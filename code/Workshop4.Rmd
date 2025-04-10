@@ -1,0 +1,53 @@
+---
+title: "Workshop4"
+author: "Dzaki Widanto"
+date: "2025-04-10"
+output: html_document
+---
+
+```{r setup, include=FALSE, message = FALSE}
+#install.packages("sf")
+#install.packages("tmap")
+#install.packages("mgcv")
+library(ggplot2)
+library(janitor)
+library(tidyverse)
+library(dplyr)
+library(terra)
+library(sf)
+library(tmap)
+library(mgcv)
+library(readr)
+```
+
+```{r}
+#load the copepod data into R studio
+dat <- read_csv("../data/data-for-course/copepods_raw.csv")
+dat
+```
+
+```{r load coordinates}
+ggplot(dat) + 
+  aes(x = longitude, y = latitude, color = richness_raw) +
+  geom_point()
+
+ggplot(dat, aes(x = latitude, y = richness_raw)) + 
+  stat_smooth() + 
+  geom_point()
+
+```
+st_as_sf = converts different data types to simple features
+crs = coordinate reference system
+```{r get going with maps}
+sdat <- st_as_sf(dat, coords = c("longitude", "latitude"),
+                 crs = 4326)
+
+# Checkout the crs meaning
+crs4326 <- st_crs(4326)
+crs4326 # look at the whole CRS
+crs4326$Name # pull out just the name of the crs
+crs4326$wkt 
+
+
+```
+
